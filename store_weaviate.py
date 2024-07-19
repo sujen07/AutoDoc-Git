@@ -1,6 +1,7 @@
 import weaviate
 from weaviate.connect import ConnectionParams
 from weaviate.classes.init import AdditionalConfig, Timeout
+from weaviate.classes.config import Configure
 import os
 import requests
 import json
@@ -17,21 +18,14 @@ client = weaviate.connect_to_local(
 )
 
 
-"""
-# Just checking if you ever need to re run it
-if(client.collections.exists("Animals")):
-    client.collections.delete("Animals")
+
+if(client.collections.exists("GitFiles")):
+    client.collections.delete("GitFiles")
     
 client.collections.create(
-    name="Animals",
+    name="GitFiles",
     vectorizer_config=Configure.Vectorizer.multi2vec_clip(
-        image_fields=["image"],
-        video_fields=["video"],
-        project_id="semi-random-dev",
-        location="us-central1",
-        model_id="multimodalembedding@001",
-        dimensions=1408,        
+        image_fields=["image"], 
+        text_fields=['text'],      
     )
 )
-
-"""
