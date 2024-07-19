@@ -1,0 +1,15 @@
+version: '3.4'
+services:
+  weaviate:
+    image: cr.weaviate.io/semitechnologies/weaviate:1.24.20
+    ports:
+     - 8080:8080
+     - 50051:50051
+    environment:
+      ENABLE_MODULES: multi2vec-clip
+      DEFAULT_VECTORIZER_MODULE: multi2vec-clip
+      CLIP_INFERENCE_API: http://multi2vec-clip:8080
+  multi2vec-clip:
+    image: cr.weaviate.io/semitechnologies/multi2vec-clip:sentence-transformers-clip-ViT-B-32-multilingual-v1
+    environment:
+      ENABLE_CUDA: 0  
