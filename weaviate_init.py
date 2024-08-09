@@ -26,7 +26,7 @@ client.collections.create(
     name="GitFiles",
     vectorizer_config=Configure.Vectorizer.multi2vec_clip(
         image_fields=["image"], 
-        text_fields=['text', 'comments', 'summary', 'file_size'],      
+        text_fields=['text'],      
     )
 )
 

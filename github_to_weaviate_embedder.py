@@ -25,12 +25,6 @@ text_model = genai.GenerativeModel(
     generation_config=generation_config,
 )
 
-vision_model = genai.GenerativeModel(
-  model_name="gemini-1.5-pro",
-  generation_config=generation_config,
-  # safety_settings = Adjust safety settings
-  # See https://ai.google.dev/gemini-api/docs/safety-settings
-)
 
 
 
@@ -62,20 +56,6 @@ def extract_comments(content):
         pass
     return str(comments)
 
-def generate_summary_with_llm(content, image=False):
-    return "None"
-    """Generate a summary using Google's LLM."""
-    if image:
-        file = upload_to_gemini(content, mime_type="image/jpeg")
-        response = vision_model.generate_content([
-        "Generate a summary of this image: ", file
-        ])
-        print(response.text)
-        return response.text
-    prompt = f"Please provide a concise summary for the following code:\n\n{content}"
-    response = chat_session.send_message(prompt)
-    print(response.text)
-    return response.text
 
 def process_github_repo(owner, repo, path='', process_function=None):
     structure = {}
@@ -114,40 +94,35 @@ def process_github_repo(owner, repo, path='', process_function=None):
 
 # Example processing function
 def add_to_embedding_collection(filename, content, filepath):
-    # Adding all the git files to collection
+    # Adding files to collection
     print(f"Processing file: {filename}")
     print(f"File size: {len(content)} bytes")
     
-    comments = "None"
-    
     if filename.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.bmp')):
-        with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(filename)[1]) as tmp_file:
-            tmp_file.write(content)
-            temp_file_path = tmp_file.name
-        summary = generate_summary_with_llm(temp_file_path, True)
+        # Handling image files
         git_files_collection.data.insert(
             {
                 "name": filename,
                 "image": toBase64(content),
                 "mediaType": "image",
-                "comments": comments,
-                "summary": summary,
                 "fileSize": len(content),
             }
         )
     else:
-        summary = generate_summary_with_llm(content.decode('utf-8'))
-        comments = extract_comments(content.decode('utf-8'))
-        git_files_collection.data.insert(
-            {
-                "name": filename,
-                "text": toBase64(content),
-                "mediaType": "text",
-                "comments": comments,
-                "summary": summary,
-                "fileSize": len(content),
-            }
-        )
+        # Handling text files
+        content_text = content.decode('utf-8')
+        # Split the content into chunks (example: 1000 characters per chunk)
+        chunk_size = 1000
+        chunks = [content_text[i:i+chunk_size] for i in range(0, len(content_text), chunk_size)]
+        for chunk in chunks:
+            git_files_collection.data.insert(
+                {
+                    "name": filename,
+                    "text": toBase64(chunk.encode('utf-8')),
+                    "mediaType": "text",
+                    "fileSize": len(chunk.encode('utf-8')),
+                }
+            )
 
 # Example usage
 owner = 'sujen07'
