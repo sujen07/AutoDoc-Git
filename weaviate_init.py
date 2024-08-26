@@ -24,8 +24,7 @@ if(client.collections.exists("GitFiles")):
     
 client.collections.create(
     name="GitFiles",
-    vectorizer_config=Configure.Vectorizer.text2vec_transformers(
-        text_fields=["text"],      
+    vectorizer_config=Configure.Vectorizer.text2vec_transformers(    
     )
 )
 
