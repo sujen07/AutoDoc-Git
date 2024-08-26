@@ -5,6 +5,7 @@ import ast
 from dotenv import load_dotenv
 import google.generativeai as genai
 from weaviate_init import client
+import numpy as np
 import tempfile
 import pdb
 
@@ -38,17 +39,20 @@ git_files_collection = client.collections.get('GitFiles')
 def toBase64(content):
     return content.decode('ascii', errors='ignore')
 
-def extract_comments(content):
-    """Extract comments from the code."""
-    comments = []
-    try:
-        tree = ast.parse(content)
-        for node in ast.walk(tree):
-            if isinstance(node, ast.Expr) and isinstance(node.value, ast.Str):
-                comments.append(node.value.s)
-    except SyntaxError:
-        pass
-    return str(comments)
+def is_readable_text(content, sample_size=1024):
+    if not content:  # Empty content
+        return False
+    
+    # Sample a random portion of the content
+    content_length = len(content)
+    if content_length > sample_size:
+        start = np.random.randint(0, content_length - sample_size)
+        sample = content[start:start + sample_size]
+    else:
+        sample = content
+    
+    # Check if the majority of the sample is printable text
+    return all(32 <= byte <= 126 or byte in (9, 10, 13) for byte in sample)
 
 
 def process_github_repo(owner, repo, path='', process_function=None):
@@ -92,17 +96,8 @@ def add_to_embedding_collection(filename, content, filepath):
     print(f"Processing file: {filename}")
     print(f"File size: {len(content)} bytes")
     
-    if filename.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.bmp')):
-        # Handling image files
-        git_files_collection.data.insert(
-            {
-                "name": filename,
-                "image": base64.b64encode(content).decode('utf-8'),
-                "mediaType": "image",
-                "fileSize": len(content),
-            }
-        )
-    else:
+    if is_readable_text(content):
+        print('Test')
         # Handling text files
         #pdb.set_trace()
         content_text = toBase64(content)
@@ -126,7 +121,7 @@ structure = process_github_repo(owner, repo, process_function=add_to_embedding_c
 print(structure)
 
 response = git_files_collection.query.near_text(
-    query="Tiger Eye image",
+    query="PyTorch training model",
     return_properties=['name', 'text'],
     limit=3
 )
