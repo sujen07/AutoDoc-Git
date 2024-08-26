@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 import google.generativeai as genai
 from weaviate_init import client
 import tempfile
+import pdb
 
 load_dotenv()
 
@@ -26,23 +27,16 @@ text_model = genai.GenerativeModel(
 )
 
 
-
-
-def upload_to_gemini(path, mime_type=None):
-  """Uploads the given file to Gemini.
-
-  See https://ai.google.dev/gemini-api/docs/prompting_with_media
-  """
-  file = genai.upload_file(path, mime_type=mime_type)
-  print(f"Uploaded file '{file.display_name}' as: {file.uri}")
-  return file
+GET_QUERY_PROMPT = "I have chunks of code and text  as well as images from a github repo strored \
+    in a embeddings collection, come up with near text queries that would fillter the collection \
+        for any information that would allow an LLM to figure out how to use the github repo, here is the structure of it: "
 
 chat_session = text_model.start_chat(history=[])
 
 git_files_collection = client.collections.get('GitFiles')
 
 def toBase64(content):
-    return base64.b64encode(content).decode('utf-8')
+    return content.decode('ascii', errors='ignore')
 
 def extract_comments(content):
     """Extract comments from the code."""
@@ -103,22 +97,23 @@ def add_to_embedding_collection(filename, content, filepath):
         git_files_collection.data.insert(
             {
                 "name": filename,
-                "image": toBase64(content),
+                "image": base64.b64encode(content).decode('utf-8'),
                 "mediaType": "image",
                 "fileSize": len(content),
             }
         )
     else:
         # Handling text files
-        content_text = content.decode('utf-8')
+        #pdb.set_trace()
+        content_text = toBase64(content)
         # Split the content into chunks (example: 1000 characters per chunk)
         chunk_size = 1000
         chunks = [content_text[i:i+chunk_size] for i in range(0, len(content_text), chunk_size)]
-        for chunk in chunks:
+        for i,chunk in enumerate(chunks):
             git_files_collection.data.insert(
                 {
-                    "name": filename,
-                    "text": toBase64(chunk.encode('utf-8')),
+                    "name": filename + f'_chunk{i}',
+                    "text": chunk,
                     "mediaType": "text",
                     "fileSize": len(chunk.encode('utf-8')),
                 }
@@ -126,7 +121,20 @@ def add_to_embedding_collection(filename, content, filepath):
 
 # Example usage
 owner = 'sujen07'
-repo = 'test-repo'
+repo = 'image-super-resolution'
 structure = process_github_repo(owner, repo, process_function=add_to_embedding_collection)
 print(structure)
+
+response = git_files_collection.query.near_text(
+    query="Tiger Eye image",
+    return_properties=['name', 'text'],
+    limit=3
+)
+
+for obj in response.objects:
+    print('name: ' + obj.properties['name'])
+    test = obj.properties['text']
+    print('String: ',  test)
+
+
 client.close()

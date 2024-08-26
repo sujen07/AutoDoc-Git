@@ -24,9 +24,8 @@ if(client.collections.exists("GitFiles")):
     
 client.collections.create(
     name="GitFiles",
-    vectorizer_config=Configure.Vectorizer.multi2vec_clip(
-        image_fields=["image"], 
-        text_fields=['text'],      
+    vectorizer_config=Configure.Vectorizer.text2vec_transformers(
+        text_fields=["text"],      
     )
 )
 

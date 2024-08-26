@@ -6,10 +6,10 @@ services:
      - 8080:8080
      - 50051:50051
     environment:
-      ENABLE_MODULES: multi2vec-clip
-      DEFAULT_VECTORIZER_MODULE: multi2vec-clip
-      CLIP_INFERENCE_API: http://multi2vec-clip:8080
-  multi2vec-clip:
-    image: cr.weaviate.io/semitechnologies/multi2vec-clip:sentence-transformers-clip-ViT-B-32-multilingual-v1
+      ENABLE_MODULES: text2vec-transformers
+      DEFAULT_VECTORIZER_MODULE: text2vec-transformers
+      TRANSFORMERS_INFERENCE_API: http://t2v-transformers:8080
+  t2v-transformers: 
+    image: cr.weaviate.io/semitechnologies/transformers-inference:sentence-transformers-multi-qa-MiniLM-L6-cos-v1
     environment:
-      ENABLE_CUDA: 0  
+      ENABLE_CUDA: 0
