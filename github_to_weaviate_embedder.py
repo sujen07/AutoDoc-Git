@@ -1,15 +1,15 @@
 import os
 import requests
-import base64
-import ast
 from dotenv import load_dotenv
 import google.generativeai as genai
-from weaviate_init import client
+from google.ai.generativelanguage_v1beta.types import content
+import weaviate_init
 import numpy as np
-import tempfile
-import pdb
 
 load_dotenv()
+
+client = weaviate_init.start_client()
+weaviate_init.add_collection(client)
 
 # Configure Google LLM
 genai.configure(api_key=os.environ["GEMINI_API_KEY"])
@@ -19,7 +19,20 @@ generation_config = {
     "top_p": 0.95,
     "top_k": 32,
     "max_output_tokens": 1024,
-    "response_mime_type": "text/plain",
+    "response_schema": content.Schema(
+        type=content.Type.OBJECT,
+        description="Return a list of near text queries for GitHub repo analysis",
+        properties={
+            "queries": content.Schema(
+                type=content.Type.ARRAY,
+                items=content.Schema(
+                    type=content.Type.STRING,
+                    description="A query that can help filter the embeddings collection."
+                )
+            )
+        }
+    ),
+    "response_mime_type": "application/json",
 }
 
 text_model = genai.GenerativeModel(
@@ -28,11 +41,28 @@ text_model = genai.GenerativeModel(
 )
 
 
-GET_QUERY_PROMPT = "I have chunks of code and text  as well as images from a github repo strored \
+GET_QUERY_PROMPT = "I have chunks of code and text from a github repo stored \
     in a embeddings collection, come up with near text queries that would fillter the collection \
-        for any information that would allow an LLM to figure out how to use the github repo, here is the structure of it: "
+    for any information that would allow an LLM to figure out how to use the github repo, \
+    make sure to use queries that would filter a vector database with these text chunks, \
+    and keep in mind the frameworks used based on file extensions, here is the structure of it: "
 
-chat_session = text_model.start_chat(history=[])
+chat_session = text_model.start_chat(
+    history=[
+        {
+            "role": "user",
+            "parts": [
+                "Generate a list of near text queries that would filter the collection for information allowing an LLM to figure out how to use a GitHub repo. Output as JSON."
+            ],
+        },
+        {
+            "role": "model",
+            "parts": [
+                "{\n\"queries\": [\n\"Dependencies and installation\",\n\"import python\",\n\"npm install\", \n\"docker\"\n]\n}"
+            ],
+        },
+    ]
+)
 
 git_files_collection = client.collections.get('GitFiles')
 
@@ -97,7 +127,6 @@ def add_to_embedding_collection(filename, content, filepath):
     print(f"File size: {len(content)} bytes")
     
     if is_readable_text(content):
-        print('Test')
         # Handling text files
         #pdb.set_trace()
         content_text = toBase64(content)
@@ -113,6 +142,11 @@ def add_to_embedding_collection(filename, content, filepath):
                     "fileSize": len(chunk.encode('utf-8')),
                 }
             )
+
+
+def get_queries(text_model, structure):
+    response = chat_session.send_message(GET_QUERY_PROMPT + str(structure))
+    return response
 
 # Example usage
 owner = 'sujen07'
@@ -130,6 +164,8 @@ for obj in response.objects:
     print('name: ' + obj.properties['name'])
     test = obj.properties['text']
     print('String: ',  test)
+
+response = get_queries(text_model, structure)
 
 
 client.close()
